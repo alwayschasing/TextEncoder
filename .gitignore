@@ -1,1 +1,5 @@
 model_output/*
+data_sets/*
+data_process/*
+eval_model/*
+cached_data/*

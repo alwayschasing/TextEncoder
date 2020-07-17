@@ -1,0 +1,5 @@
+nohup: ignoring input
+Building prefix dict from the default dictionary ...
+Dumping model to file cache /tmp/jieba.cache
+Loading model cost 1.147 seconds.
+Prefix dict has been built successfully.
