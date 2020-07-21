@@ -9,6 +9,11 @@ from .Pooling import Pooling
 from .util import import_from_string, batch_to_device, http_get
 from .Evaluator import Evaluator
 
+class DimReduceModel(nn.Sequential):
+    def __init__(self, input_size, output_size):
+        self.linear1 = nn.Linear(in_features=input_size, out_features=output_size, bias=False)
+        self.act1 = nn.Tanh()
+        super(DimReduceModel, self).__init__(self.linear1, act1)
 
 class BertEncoder(nn.Module):
 
@@ -20,33 +25,34 @@ class BertEncoder(nn.Module):
             max_seq_length = 510
         self.max_seq_length = max_seq_length
 
-        
+
         self.bert = BertModel.from_pretrained(bert_path)
         self.tokenizer = BertTokenizer.from_pretrained(bert_path)
         self.pooling_model = Pooling(word_embedding_dimension=word_embedding_size,
                                      pooling_mode_cls_token=False,
                                      pooling_mode_max_token=False,
                                      pooling_mode_mean_token=True)
-        self.dimreduce_model = nn.Linear(in_features=word_embedding_size, out_features=reduce_output_size, bias=True)
+        #self.dimreduce_model = nn.Linear(in_features=word_embedding_size, out_features=reduce_output_size, bias=True)
+        self.dimreduce_model = DimReduceModel(input_size=word_embedding_size, output_size=reduce_output_size)
 
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         logging.info("Use pytorch device: {}".format(device))
         self.device = torch.device(device)
         self.to(device)
-    
+
     def forward(self, features):
         output_states = self.bert(**features)
         output_tokens = output_states[0]
         cls_tokens = output_tokens[:, 0, :]  # CLS token is first token
-        features.update({'token_embeddings': output_tokens, 'cls_token_embeddings': cls_tokens, 'attention_mask': features['attention_mask']}) 
+        features.update({'token_embeddings': output_tokens, 'cls_token_embeddings': cls_tokens, 'attention_mask': features['attention_mask']})
         if len(output_states) > 2:
             features.update({'all_layer_embeddings': output_states[2]})
         features = self.pooling_model(features)
         reduce_output = self.dimreduce_model(features["sentence_embedding"])
         features.update({"sentence_embedding": reduce_output})
         return features
-    
+
     def smart_batching_collate(self, batch):
         num_texts = len(batch[0][0])
         labels = []
@@ -78,13 +84,13 @@ class BertEncoder(nn.Module):
 
             features.append(feature_lists)
         return {'features': features, 'labels': torch.stack(labels)}
-        
+
     def tokenize(self, text: str) -> List[int]:
         """
         Tokenizes a text and maps tokens to token-ids
         """
         return self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(text))
-    
+
     def get_sentence_features(self, tokens: List[int], pad_seq_length: int):
         """
         Convert tokenized sentence in its embedding ids, segment ids and mask
@@ -100,13 +106,13 @@ class BertEncoder(nn.Module):
 
     def get_word_embedding_dimension(self) -> int:
         return self.bert.config.hidden_size
-    
+
     def save(self, output_path: str):
         torch.save(self.state_dict(), output_path)
 
     def load(self, input_path: str):
         self.load_state_dict(torch.load(input_path))
-        
+
     def evaluate(self, evaluator: Evaluator, output_path: str = None):
         """
         Evaluate the model
@@ -145,14 +151,14 @@ class BertEncoder(nn.Module):
             max_grad_norm: float = 1,
             local_rank: int = -1
             ):
-        
+
         if output_path is not None:
             os.makedirs(output_path, exist_ok=True)
             if os.listdir(output_path):
                 raise ValueError("Output directory ({}) already exists and is not empty.".format(
                     output_path))
-        
-        dataloader.collate_fn = self.smart_batching_collate() 
+
+        dataloader.collate_fn = self.smart_batching_collate()
         device = self.device
         self.best_score = -9999999
 
@@ -169,8 +175,8 @@ class BertEncoder(nn.Module):
         t_total = num_train_steps
         if local_rank != -1:
             t_total = t_total // torch.distributed.get_world_size()
-        
-        
+
+
         optimizer = optimizer_class(optimizer_grouped_parameters, **optimizer_params)
         scheduler = self._get_scheduler(optimizer, scheduler=scheduler_name, warmup_steps=warmup_steps, t_total=t_total)
 
@@ -217,7 +223,7 @@ class BertEncoder(nn.Module):
             return transformers.get_cosine_with_hard_restarts_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=t_total)
         else:
             raise ValueError("Unknown scheduler {}".format(scheduler))
-    
+
     def encode(self, sentences: List[str], batch_size: int = 8, show_progress_bar: bool = None, output_value: str = 'sentence_embedding', convert_to_numpy: bool = True) -> List[ndarray]:
         self.eval()
         if show_progress_bar is None:

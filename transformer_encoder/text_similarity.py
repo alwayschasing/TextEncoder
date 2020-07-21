@@ -9,6 +9,7 @@ python training_nli.py
 OR
 python training_nli.py pretrained_transformer_model_name
 """
+import scipy
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch
@@ -19,7 +20,7 @@ import sys
 import os
 import argparse
 from encoder_model import BertEncoder
-from LossUtil import CosineSimilarityLoss
+from losses import CosineSimilarityLoss
 from DatasetUtil import SentencesDataset, STSDataReader
 from evaluator import EmbeddingSimilarityEvaluator
 
@@ -52,7 +53,7 @@ def main(args):
         logging.info("Read train dataset")
         data_reader = STSDataReader()
         if not os.path.isfile(cached_data_file):
-            train_examples = []  
+            train_examples = []
             for train_file in train_data_files:
                 if os.path.isfile(train_file):
                     logging.info("load train file:%s"%(train_file))
@@ -111,7 +112,7 @@ def main(args):
         predict_output = os.path.join(args.model_output_dir, "pred_res")
         with open(predict_output, "w", encoding="utf-8") as fp:
             for idx, item in enumerate(predict_res):
-                input_example = input_examples[idx] 
+                input_example = input_examples[idx]
                 fp.write("%s\t%s\t%f\n"%(input_example.texts[0], input_example.texts[1], item))
 
 
@@ -134,4 +135,4 @@ if __name__ == "__main__":
     parser.add_argument('--skip_firstline', type=int, default=0, help="whether skip first line of data")
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
-    main(args)  
+    main(args)

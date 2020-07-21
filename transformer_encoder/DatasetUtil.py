@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 from typing import List
 from typing import Union, List
 from tqdm import tqdm
+import logging
 
 
 class InputExample:
@@ -34,7 +35,7 @@ class InputExample:
 class STSDataReader(object):
     """Semantic Textual Similarity data reader"""
     def __init__(self, s1_col_idx=0, s2_col_idx=1, score_col_idx=2, delimiter="\t", dataset_folder=None, 
-                 quoting=csv.QUOTE_NONE, normalize_scores=True, min_score=0, max_score=5):
+                 quoting=csv.QUOTE_NONE, normalize_scores=False, min_score=0, max_score=1):
         self.dataset_folder = dataset_folder
         self.score_col_idx = score_col_idx
         self.s1_col_idx = s1_col_idx
@@ -69,6 +70,8 @@ class STSDataReader(object):
                 s1 = row[self.s1_col_idx]
                 s2 = row[self.s2_col_idx]
                 examples.append(InputExample(guid=filename+str(id), texts=[s1, s2], label=score))
+                if id < 10:
+                    logging.info("Example idx:%d\ntexts:%s\t%s\nlabel:%f"%(id, s1, s2, score))       
 
                 if max_examples > 0 and len(examples) >= max_examples:
                     break

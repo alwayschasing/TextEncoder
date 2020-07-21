@@ -11,14 +11,15 @@ export CUDA_HOME=/usr/local/cuda-10.1:$CUDA_HOME
 train_data="/search/odin/liruihong/TextEncoder/data_sets/fuse_data/sentence_pair_train.tsv"
 dev_data="/search/odin/liruihong/TextEncoder/data_sets/fuse_data/sentence_pair_dev.tsv"
 pred_data="/search/odin/liruihong/TextEncoder/data_sets/annotate_data_new/merged_all.tsv"
-cached_data="/search/odin/liruihong/TextEncoder/cached_data/cached_fuse_data_lowdim.train"
+cached_data="/search/odin/liruihong/TextEncoder/cached_data/transformer_encoder/cached_fuse_data.train"
+transformer_model="/search/odin/liruihong/pretrained_model/pytorch_model/bert-base-chinese"
 
 #--init_model="/search/odin/liruihong/TextEncoder/model_output/bert-base/2020-05-20_15-56-54" \
 model_output_dir="/search/odin/liruihong/TextEncoder/model_output/bert-reduce/fuse-data-epoch10"
 
 python text_similarity.py \
     --gpu_id="2" \
-    --transformer_model="/search/odin/zhuguangnan/SBERT/trans_data/bert_base_chinese/" \
+    --transformer_model=$transformer_model \
     --model_output_dir=$model_output_dir \
     --batch_size=32 \
     --num_epochs=10 \
