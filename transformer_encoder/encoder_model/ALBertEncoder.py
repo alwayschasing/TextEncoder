@@ -285,3 +285,20 @@ class ALBertEncoder(nn.Module):
         reverting_order = np.argsort(length_sorted_idx)
         all_embeddings = [all_embeddings[idx] for idx in reverting_order]
         return all_embeddings
+
+
+    def predict_cosine_similarity(self, dataloader):
+        dataloader.collate_fn = self.smart_batching_collate
+        device = self.device
+        predict_res = []
+        self.eval()
+        with torch.no_grad():
+            for batch_data in tqdm(dataloader, desc="Iteration", smoothing=0.05):
+                features, labels = batch_to_device(batch_data, self.device)
+                pair_embeddings = [self.forward(sentence_feature)['sentence_embedding'] for sentence_feature in features]
+                sen_a, sen_b = pair_embeddings
+                cosine_similarity = torch.cosine_similarity(sen_a, sen_b)
+                cosine_similarity.to('cpu').numpy()
+                cosine_similarity = [x.to('cpu').numpy() for x in cosine_similarity]
+                predict_res.extend(cosine_similarity)
+        return predict_res

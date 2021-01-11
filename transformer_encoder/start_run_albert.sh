@@ -20,6 +20,7 @@ model_output_dir="/search/odin/liruihong/TextEncoder/model_output/bert-reduce/al
 python text_similarity_albert.py \
     --gpu_id="3" \
     --transformer_model=$transformer_model \
+    --init_model="/search/odin/liruihong/TextEncoder/model_output/bert-reduce/albert-fuse-data-epoch10" \
     --model_output_dir=$model_output_dir \
     --batch_size=32 \
     --num_epochs=10 \
@@ -29,5 +30,5 @@ python text_similarity_albert.py \
     --skip_firstline=1 \
     --cached_data=$cached_data \
     --dev_data=$dev_data \
-    --do_train=1 \
-    --do_predict=0
+    --do_train=0 \
+    --do_predict=1

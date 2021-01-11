@@ -9,9 +9,11 @@ python training_nli.py
 OR
 python training_nli.py pretrained_transformer_model_name
 """
+import scipy
 from torch.utils.data import DataLoader
 import torch
 import math
+import numpy as np
 from sentence_transformers import models, losses
 from sentence_transformers import SentencesDataset, LoggingHandler, SentenceTransformer
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
@@ -21,6 +23,27 @@ from datetime import datetime
 import sys
 import os
 import argparse
+
+
+def cosine_similarity(vec_a, vec_b):
+    vec_a = np.asarray(vec_a)
+    vec_b = np.asarray(vec_b)
+    norm_a = np.linalg.norm(vec_a)
+    norm_b = np.linalg.norm(vec_b)
+    cosine_sim = np.dot(vec_a, vec_b)/(norm_a*norm_b);
+    return cosine_sim
+
+
+def load_pred_data(input_file, skip_head=True):
+    text_pairs = []
+    with open(input_file, "r", encoding="utf-8") as fp:
+        lines = fp.readlines()
+        for idx, line in enumerate(lines):
+            if skip_head == True and idx == 0:
+                continue
+            sens = line.strip().split('\t')
+            text_pairs.append([sens[0], sens[1]])
+    return text_pairs
 
 
 def main(args):
@@ -37,7 +60,7 @@ def main(args):
     model_name = args.model_name
     if model_name is None:
         model_name = 'bert-base-chinese'
-    
+
     # Read the dataset
     batch_size = args.batch_size
 
@@ -71,7 +94,7 @@ def main(args):
         cached_data_file = args.cached_data
         logging.info("Read train dataset")
         if not os.path.isfile(cached_data_file):
-            train_examples = []  
+            train_examples = []
             for train_file in train_data_files:
                 if os.path.isfile(train_file):
                     logging.info("load train file:%s"%(train_file))
@@ -121,8 +144,13 @@ def main(args):
     if args.do_predict == 1:
         logging.info("Read predict dataset")
         pred_data_file = args.pred_data
-        pred_data = SentencesDataset(data_reader.get_examples(pred_data_file), model=model)
-        pred_dataloader = DataLoader(pred_data, shuffle=False, batch_size=batch_size)
+        output_file = os.path.join(args.model_output_dir, "pred_res")
+        text_pairs = load_pred_data(pred_data_file)
+        with open(output_file, "w", encoding="utf-8") as fp:
+            for tpair in text_pairs:
+                embedding_pair = model.encode(tpair)
+                cos_sim = cosine_similarity(embedding_pair[0], embedding_pair[1])
+                fp.write("%s\t%s\t%f\n"%(tpair[0], tpair[1], cos_sim))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Text Similarity")
@@ -138,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument('--dev_data', type=str, help="dev_data path")
     parser.add_argument('--pred_data', type=str, help="pred_data path")
     parser.add_argument('--init_model', default=None, type=str, help="init model path")
+    parser.add_argument('--gpu_id', type=str, default='0', help="gpu id")
     args = parser.parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-    main(args)  
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    main(args)

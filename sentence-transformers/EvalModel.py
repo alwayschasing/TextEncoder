@@ -105,6 +105,9 @@ def eval_model(annotate_file, model_name, eval_res_file):
     writer.writerow([model_path, ndcg])
     fp.close()
 
+def model_predict(input_file, output_file):
+    pass
+
 
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"

@@ -137,6 +137,7 @@ class BertEncoder(nn.Module):
             if score > self.best_score and save_best_model:
                 self.save(output_path)
                 self.best_score = score
+            return score
 
     def fit(self,
             dataloader,
@@ -207,11 +208,22 @@ class BertEncoder(nn.Module):
                 global_steps += 1
 
                 if evaluation_steps > 0 and training_steps % evaluation_steps == 0:
-                    self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps)
+                    eval_score = self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps)
+                    if eval_score >= self.best_score:
+                        torch.save(loss_model.state_dict(), os.path.join(output_path, "loss_model.bin"))
+                        logging.info("save loss model, eval_score:%f, best_score:%f"%(eval_score, self.best_score))
+                    else:
+                        logging.info("don't save loss model, eval_score:%f, best_score:%f"%(eval_score, self.best_score))
+                        
                     loss_model.zero_grad()
                     loss_model.train()
 
-            self._eval_during_training(evaluator, output_path, save_best_model, epoch, -1)
+            eval_score = self._eval_during_training(evaluator, output_path, save_best_model, epoch, -1)
+            if eval_score >= self.best_score:
+                torch.save(loss_model.state_dict(), os.path.join(output_path, "loss_model.bin"))
+                logging.info("save loss model, eval_score:%f, best_score:%f"%(eval_score, self.best_score))
+            else:
+                logging.info("don't save loss model, eval_score:%f, best_score:%f"%(eval_score, self.best_score))
 
     def _get_scheduler(self, optimizer, scheduler: str, warmup_steps: int, t_total: int):
         """
